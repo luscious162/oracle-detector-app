@@ -1,7 +1,5 @@
 import os
-import sys # PyInstaller: 导入 sys
-import threading # pywebview: 导入 threading
-# import webview # 暂时注释掉 webview，先确保 Render 部署成功
+import sys
 import numpy as np
 import cv2
 import json
@@ -10,25 +8,21 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import base64
 from datetime import datetime
-import time # 用于等待服务器启动
+import time # 用于调试或特定逻辑
 
-# --- PyInstaller: 获取资源基础路径的函数 ---
+# --- 获取资源基础路径的函数 ---
 def get_base_path():
     """ 获取资源文件的基础路径，兼容开发环境和 PyInstaller 打包环境 """
-    # 注意：在 Render 环境中，没有 sys.frozen，所以会返回脚本目录
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-        # 如果是 PyInstaller 打包后的环境 (_MEIPASS 是临时文件夹路径)
         return sys._MEIPASS
     else:
-        # 如果是普通开发环境或 Render 环境 (获取当前脚本所在目录)
         return os.path.abspath(os.path.dirname(__file__))
 
 BASE_DIR = get_base_path()
-print(f"资源基础路径 (BASE_DIR): {BASE_DIR}") # 调试信息
+print(f"资源基础路径 (BASE_DIR): {BASE_DIR}")
 
-# --- 修改: 使用别名导入两个逻辑 ---
+# --- 导入预测逻辑模块 ---
 try:
-    # 导入原始逻辑 (别名 logic_a)
     import prediction_logic as logic_a
     print("成功导入 prediction_logic as logic_a")
 except ImportError as e:
@@ -36,23 +30,20 @@ except ImportError as e:
     logic_a = None
 
 try:
-    # 导入测试逻辑 (别名 logic_b)
     import predict_batch_test as logic_b
     print("成功导入 predict_batch_test as logic_b")
 except ImportError as e:
     print(f"警告: 无法导入 predict_batch_test: {e}")
     logic_b = None
 
-# 检查至少有一个逻辑被成功导入
 if logic_a is None and logic_b is None:
-    raise ImportError("错误：两个预测逻辑脚本都未能成功导入！请检查文件是否存在且无语法错误。")
+    raise ImportError("错误：两个预测逻辑脚本都未能成功导入！")
 
 # --- 配置 ---
-# **修正:** 直接定义 TFLite 文件名，不再从 logic 模块获取路径常量
 DEFAULT_TFLITE_MODEL_FILENAME = "oracle_detector_model.tflite"
-DEFAULT_CLASSES = ["animal_bone", "tortoise_shell"] # 默认类别，确保与模型一致
+DEFAULT_CLASSES = ["animal_bone", "tortoise_shell"]
 
-# 尝试从导入的模块获取类别，如果失败则使用默认值
+# 尝试从模块获取类别
 if logic_a and hasattr(logic_a, 'DEFAULT_CLASSES'):
     DEFAULT_CLASSES = logic_a.DEFAULT_CLASSES
 elif logic_b and hasattr(logic_b, 'DEFAULT_CLASSES'):
@@ -60,13 +51,9 @@ elif logic_b and hasattr(logic_b, 'DEFAULT_CLASSES'):
 else:
     print("警告：无法从 logic_a 或 logic_b 获取 DEFAULT_CLASSES，使用内置默认值。")
 
-
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-
-# **修正:** 使用 get_base_path() 和固定文件名构建模型路径
 MODEL_PATH = os.path.join(BASE_DIR, DEFAULT_TFLITE_MODEL_FILENAME)
-
 template_dir = os.path.join(BASE_DIR, 'templates')
 static_dir = os.path.join(BASE_DIR, 'static')
 
@@ -82,40 +69,45 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-# --- 全局模型/解释器变量 ---
-# **修正:** 变量名改为 interpreter 更清晰
+# --- 全局解释器变量 ---
 interpreter = None
 interpreter_load_error = None
 
-# --- 函数 (allowed_file, initialize_model) ---
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# **修正:** 函数名改为 initialize_interpreter，加载 TFLite
+# --- 加载 TFLite 解释器的函数 ---
 def initialize_interpreter():
-    global interpreter, interpreter_load_error
+    global interpreter, interpreter_load_error # 声明修改全局变量
     loader_function = None
-    # 优先使用 logic_a 的加载器
     if logic_a and hasattr(logic_a, 'load_tflite_model'):
         loader_function = logic_a.load_tflite_model
         print("使用 logic_a.load_tflite_model 加载模型")
-    # 如果 logic_a 不可用或没有加载函数，尝试 logic_b
     elif logic_b and hasattr(logic_b, 'load_tflite_model'):
         loader_function = logic_b.load_tflite_model
         print("使用 logic_b.load_tflite_model 加载模型")
 
     if loader_function:
-        # 使用计算好的 MODEL_PATH
-        interpreter, interpreter_load_error = loader_function(MODEL_PATH)
-        if interpreter_load_error:
+        interpreter_instance, error_msg = loader_function(MODEL_PATH)
+        if error_msg:
+            interpreter_load_error = error_msg # 记录错误
             print(f"警告: TFLite Interpreter 加载失败: {interpreter_load_error}")
-        elif interpreter:
+        elif interpreter_instance:
+            interpreter = interpreter_instance # 赋值给全局变量
             print("Flask 应用 TFLite Interpreter 加载成功。")
     else:
         interpreter_load_error = "错误：未找到可用的 TFLite 模型加载函数 (load_tflite_model)"
         print(interpreter_load_error)
 
-# --- Flask 路由 (@app.route...) ---
+# --- 在应用启动时（模块加载时）初始化解释器 ---
+print("--- 初始化 TFLite Interpreter (全局作用域) ---")
+initialize_interpreter()
+if interpreter is None:
+    print("错误：全局 Interpreter 未能加载，应用可能无法处理预测请求。")
+# ------------------------------------------------
+
+# --- 函数 (allowed_file) ---
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# --- Flask 路由 ---
 @app.route('/')
 def splash():
     now = datetime.utcnow()
@@ -123,6 +115,7 @@ def splash():
 
 @app.route('/api/detect', methods=['POST'])
 def detect():
+    # ... (路由内部逻辑保持不变，检查全局 interpreter 变量) ...
     method = request.form.get('prediction_method', 'logic_a')
     print(f"[API] 请求使用方法: {method}")
 
@@ -131,9 +124,10 @@ def detect():
     if file.filename == '': return jsonify({"error": "未选择文件"}), 400
     if not allowed_file(file.filename): return jsonify({"error": "不支持的文件类型"}), 400
 
-    # **修正:** 检查 interpreter 是否加载
+    # 检查全局 interpreter 是否加载
     if interpreter is None:
         err_msg = interpreter_load_error or "Interpreter 未成功加载。"
+        print(f"错误: /api/detect - {err_msg}") # 添加日志
         return jsonify({"error": f"模型解释器不可用: {err_msg}"}), 500
 
     predictor = None
@@ -157,12 +151,12 @@ def detect():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
 
-        # **修正:** 传递 interpreter 给预测函数
+        # 传递全局 interpreter 给预测函数
         predictions_api, _, error_msg = predictor(
             filepath, interpreter, # 传递 interpreter
             classes=getattr(constants_module, 'DEFAULT_CLASSES', DEFAULT_CLASSES),
-            patch_height=getattr(constants_module, 'DEFAULT_PATCH_HEIGHT', 160), # 使用模型尺寸
-            patch_width=getattr(constants_module, 'DEFAULT_PATCH_WIDTH', 160),   # 使用模型尺寸
+            patch_height=getattr(constants_module, 'DEFAULT_PATCH_HEIGHT', 160),
+            patch_width=getattr(constants_module, 'DEFAULT_PATCH_WIDTH', 160),
             min_confidence_threshold=getattr(constants_module, 'DEFAULT_MIN_CONFIDENCE_THRESHOLD', 0.5),
             threshold_type=getattr(constants_module, 'DEFAULT_THRESHOLD_TYPE', 'adaptive'),
             closing_kernel_size=getattr(constants_module, 'DEFAULT_CLOSING_KERNEL_SIZE', 3),
@@ -184,12 +178,14 @@ def detect():
         return jsonify(predictions_api), 200
 
     except Exception as e:
+        # 使用 app.logger 记录更详细的错误信息
         app.logger.error(f"API 检测失败 (方法: {method}): {str(e)}", exc_info=True)
         return jsonify({"error": f"检测失败: {str(e)}"}), 500
 
 
 @app.route('/detect', methods=['GET', 'POST'])
 def detection_interface():
+    # ... (路由内部逻辑保持不变，检查全局 interpreter 变量) ...
     result_image_b64 = None
     predictions_for_html = None
     error_message = None
@@ -206,9 +202,10 @@ def detection_interface():
             file = request.files['image']
             if file.filename == '': error_message = "未选择文件"
             elif not allowed_file(file.filename): error_message = "不支持的文件类型"
-            # **修正:** 检查 interpreter
+            # 检查全局 interpreter
             elif interpreter is None:
                 err_msg = interpreter_load_error or "Interpreter 未成功加载。"
+                print(f"错误: /detect - {err_msg}") # 添加日志
                 error_message = f"模型解释器不可用: {err_msg}"
             else:
                 predictor = None
@@ -230,7 +227,7 @@ def detection_interface():
                         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                         file.save(filepath)
 
-                        # **修正:** 传递 interpreter
+                        # 传递全局 interpreter
                         predictions_api, result_image, error_msg = predictor(
                             filepath, interpreter, # 传递 interpreter
                             classes=getattr(constants_module, 'DEFAULT_CLASSES', DEFAULT_CLASSES),
@@ -267,7 +264,6 @@ def detection_interface():
                         app.logger.error(f"Web UI 处理图像时出错 (方法: {selected_method}): {str(e)}", exc_info=True)
                         error_message = f"处理图像时发生意外错误: {str(e)}"
 
-    # **修正:** 使用固定文件名，检查 interpreter 状态
     model_filename = DEFAULT_TFLITE_MODEL_FILENAME
     model_status = "已加载" if interpreter else f"加载失败 ({interpreter_load_error or '未知错误'})"
     default_constants = logic_a or logic_b
@@ -294,20 +290,11 @@ def detection_interface():
         logic_b_available=bool(logic_b and hasattr(logic_b, 'predict_rubbings'))
     )
 
-# --- 运行 Flask 应用 (Render 会使用 gunicorn) ---
-# **修正:** 移除 pywebview 相关代码，专注于 Render 部署
-def run_server():
-    # 在服务器启动前加载模型/解释器
-    print("--- 初始化 TFLite Interpreter ---")
-    initialize_interpreter()
-    if interpreter is None:
-        print("错误：Interpreter 未能加载，Flask 服务器可能无法正常工作。")
+# --- 移除 if __name__ == '__main__' 块 ---
+# Render 使用 Gunicorn 启动，不需要这个块来运行服务器。
+# 本地测试可以通过直接运行 `flask run` (需要设置 FLASK_APP=app.py)
+# 或者使用 `gunicorn app:app` 来模拟 Render 环境。
+# def run_server(): ...
+# if __name__ == '__main__': run_server()
 
-    # Render 会使用 gunicorn 命令启动，这里的 app.run 仅用于本地测试
-    # 如果直接运行 python app.py，则会执行这里
-    print("--- 启动 Flask 开发服务器 (用于本地测试) ---")
-    app.run(host='127.0.0.1', port=5000, debug=False)
-
-if __name__ == '__main__':
-    run_server()
 
