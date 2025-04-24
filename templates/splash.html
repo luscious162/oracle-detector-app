@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>欢迎 - 智能甲骨文拓片分析</title>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+<body class="apple-style splash-body">
+
+    <main class="splash-content">
+        <h1 class="splash-title">智能甲骨文分析</h1>
+        <p class="splash-subtitle">深入探索古代文字的魅力，体验 AI 驱动的拓片识别技术。</p>
+        <a href="{{ url_for('detection_interface') }}" class="btn btn-primary splash-button">
+            进入体验
+        </a>
+    </main>
+
+    <footer class="splash-footer">
+         © {{ now.year }} 甲骨文智能分析平台
+    </footer>
+
+    <!-- No JS needed -->
+
+</body>
+</html>

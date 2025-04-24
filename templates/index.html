@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>智能甲骨文拓片分析 - 在线检测</title>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+    <!-- Bootstrap Icons CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- 内部 <style> 块已被移除，相关样式移至 style.css -->
+
+</head>
+<body class="apple-style">
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-sm navbar-light bg-light sticky-top shadow-sm mb-4">
+        <div class="container content-container">
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('splash') }}">
+                 <i class="bi bi-cpu me-2" style="font-size: 1.5rem; color: var(--link-color);"></i>
+                 <span style="font-weight: 500;">甲骨文智能分析</span>
+            </a>
+             <span class="navbar-text ms-auto">
+                在线检测工具
+            </span>
+        </div>
+    </nav>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">处理中...</span>
+        </div>
+        <div class="loading-text">正在分析图像，请稍候...</div>
+    </div>
+
+
+    <div class="container content-container mt-4 mb-5">
+
+        <div class="row g-5 main-content-area">
+            <!-- Left Column: Test Form & Model Status & API Docs -->
+            <div class="col-lg-5 order-lg-1">
+                <section id="test-section" class="content-section test-section mb-4 fade-in">
+                    <h2 class="section-heading visually-hidden">在线测试</h2>
+                     {% if error_message %}
+                        <div class="alert alert-error" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error_message }}
+                        </div>
+                    {% endif %}
+                    <form method="post" enctype="multipart/form-data" id="upload-form" class="upload-form" action="{{ url_for('detection_interface') }}">
+                        {# 文件选择输入框 #}
+                        <div class="mb-3">
+                            <label for="imageUpload" class="form-label">请选择拓片图像文件:</label>
+                            <input class="form-control form-control-lg" type="file" id="imageUpload" name="image" accept="image/jpeg,image/png,image/jpg" required title="选择 JPG, JPEG 或 PNG 格式的拓片图像">
+                        </div>
+
+                        {# *** 新增: 预测方法选择下拉菜单 *** #}
+                        <div class="mb-3 mt-4">
+                            <label for="predictionMethodSelect" class="form-label">选择预测逻辑:</label>
+                            <select class="form-select form-select-lg" id="predictionMethodSelect" name="prediction_method" aria-label="选择预测逻辑">
+                                {# 只显示可用的选项 #}
+                                {% if logic_a_available %}
+                                <option value="logic_a" {% if current_method == 'logic_a' %}selected{% endif %}>
+                                    标准逻辑 (标注检测框)
+                                </option>
+                                {% endif %}
+                                {% if logic_b_available %}
+                                <option value="logic_b" {% if current_method == 'logic_b' %}selected{% endif %}>
+                                    测试逻辑 (标注轮廓)
+                                </option>
+                                {% endif %}
+                                {# 如果两者都不可用，显示提示 #}
+                                {% if not logic_a_available and not logic_b_available %}
+                                <option value="" disabled selected>无可用预测逻辑</option>
+                                {% endif %}
+                            </select>
+                            <div id="methodHelp" class="form-text">选择不同的后台处理算法。</div>
+                        </div>
+                        {# *** 预测方法选择结束 *** #}
+
+                        {# 提交按钮 #}
+                        <button type="submit" class="btn btn-primary btn-lg btn-submit w-100 mt-4"> {# 调整了上边距 mt-4 #}
+                             <i class="bi bi-search me-2"></i>开始检测
+                        </button>
+                    </form>
+                 </section>
+
+                 <section class="content-section model-status-section fade-in delay-1">
+                    <h2 class="section-heading visually-hidden">模型状态</h2>
+                     <div class="status-card {% if model_status.startswith('已加载') %}status-ok{% else %}status-error{% endif %} d-flex align-items-center">
+                        <i class="bi {% if model_status.startswith('已加载') %}bi-check-circle-fill{% else %}bi-x-octagon-fill{% endif %} status-icon me-2"></i>
+                        <p><strong>模型状态:</strong> {{ model_status }}</p>
+                    </div>
+                     <p class="model-note mt-2">{{ model_note }}</p>
+                </section>
+
+                 <aside class="content-section api-docs-aside fade-in delay-2 mt-4">
+                     <h2 class="section-heading">API 参考</h2>
+                    <div class="api-endpoint-card">
+                        <h3 class="api-endpoint-title">
+                           <i class="bi bi-braces me-2"></i>目标检测接口
+                        </h3>
+                        <p><strong>URL:</strong> <code>/api/detect</code></p>
+                        <p><strong>方法:</strong> <span class="badge method-post">POST</span></p>
+                        <p><strong>类型:</strong> <code>multipart/form-data</code></p>
+                        <p><strong>参数:</strong></p>
+                        <ul class="param-list">
+                            <li><code>image</code> <small>(文件)</small> - 拓片图像</li>
+                        </ul>
+                        <p><strong>成功返回 (200):</strong> 识别结果 (JSON Array)</p>
+                         <p><strong>失败返回:</strong> 错误信息 (JSON Object)</p>
+                     </div>
+                 </aside>
+
+            </div>
+
+
+            <!-- Right Column: Results -->
+            <div class="col-lg-7 order-lg-2">
+                 {# --- 结果显示区域 (保持不变) --- #}
+                 {% if request_processed %}
+                     <section class="content-section results-section fade-in visible" id="results">
+                         {# ... (所有结果显示逻辑保持不变) ... #}
+                         {% if not error_message %}
+                             <h2 class="section-heading">检测结果</h2>
+                             <div class="result-content">
+                                 {% if result_image_b64 %}
+                                    <div class="result-image-wrapper mb-4 shadow-sm text-center">
+                                        <img src="data:image/jpeg;base64,{{ result_image_b64 }}" class="result-image" alt="检测结果图像">
+                                    </div>
+                                 {% endif %}
+
+                                 {% if predictions %}
+                                     <div class="predictions-wrapper mt-4">
+                                         <h4 class="prediction-count">{{ predictions|length }} 个目标已识别</h4>
+                                         <div class="table-responsive">
+                                             <table class="table result-table">
+                                                 <thead>
+                                                     <tr>
+                                                         <th>#</th>
+                                                         <th>类别</th>
+                                                         <th>置信度</th>
+                                                         <th>边界框 (坐标)</th>
+                                                     </tr>
+                                                 </thead>
+                                                 <tbody>
+                                                     {% for pred in predictions %}
+                                                     <tr style="--row-index: {{ loop.index0 }};">
+                                                         <td>{{ loop.index }}</td>
+                                                         <td>{{ pred.label }}</td>
+                                                         <td>{{ "%.2f" | format(pred.score) }}</td>
+                                                         <td><code>[{{ pred.box[0] }}, {{ pred.box[1] }}, {{ pred.box[2] }}, {{ pred.box[3] }}]</code></td>
+                                                     </tr>
+                                                     {% endfor %}
+                                                 </tbody>
+                                             </table>
+                                         </div>
+                                     </div>
+                                 {% elif result_image_b64 %}
+                                     <div class="alert alert-info mt-3" role="alert">
+                                        <i class="bi bi-info-circle-fill me-2"></i>图像已处理，但未检测到符合条件的轮廓。
+                                    </div>
+                                 {% else %}
+                                     <div class="alert alert-warning mt-3" role="alert">
+                                        <i class="bi bi-exclamation-diamond-fill me-2"></i>未能生成有效的检测结果或图像。
+                                    </div>
+                                 {% endif %}
+                             </div>
+
+                         {% else %}
+                            <h2 class="section-heading">处理出错</h2>
+                            <div class="alert alert-light mt-3" role="alert">
+                                处理请求时遇到问题。请参考左侧的错误信息。
+                            </div>
+                         {% endif %}
+
+                         <div class="mt-4 text-center">
+                              <a href="{{ url_for('detection_interface') }}" class="btn btn-outline-secondary">
+                                 <i class="bi bi-arrow-clockwise me-2"></i>检测新图像
+                              </a>
+                         </div>
+                     </section>
+                 {% else %}
+                     <section class="content-section results-placeholder fade-in delay-3">
+                         <h2 class="section-heading">等待检测</h2>
+                         <div class="text-center p-4">
+                             <i class="bi bi-images" style="font-size: 4rem; color: var(--text-color-tertiary);"></i>
+                             <p class="mt-3 text-muted">请在左侧上传拓片图像开始分析。<br>检测结果将显示在此处。</p>
+                         </div>
+                     </section>
+                 {% endif %}
+                 {# --- End Results Section --- #}
+            </div>
+        </div> <!-- End Row -->
+
+        <footer class="text-center site-footer mt-5 pt-5 fade-in delay-3">
+            <small>© {{ now.year }} 甲骨文智能分析平台</small>
+        </footer>
+
+    </div> <!-- End Container -->
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <!-- Custom JS for loading overlay (保持不变) -->
+    <script>
+        const uploadForm = document.getElementById('upload-form');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        // const submitButton = uploadForm ? uploadForm.querySelector('button[type="submit"]') : null; // 按钮不再需要特殊处理
+
+        if (uploadForm && loadingOverlay) {
+            uploadForm.addEventListener('submit', function() {
+                setTimeout(() => {
+                    if (loadingOverlay) {
+                        loadingOverlay.style.display = 'flex';
+                        void loadingOverlay.offsetWidth;
+                        loadingOverlay.classList.add('visible');
+                    }
+                }, 10);
+            });
+        }
+
+        window.addEventListener('pageshow', function(event) {
+             if (loadingOverlay) {
+                 if (event.persisted) {
+                    loadingOverlay.style.display = 'none';
+                    loadingOverlay.classList.remove('visible');
+                 }
+             }
+        });
+    </script>
+
+</body>
+</html>
