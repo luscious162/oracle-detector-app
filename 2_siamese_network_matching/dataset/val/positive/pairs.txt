@@ -1,0 +1,5 @@
+/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/val/curves/curve_000.png,/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/val/curves/curve_001.png
+/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/val/curves/curve_001.png,/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/val/curves/curve_002.png
+/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/val/curves/curve_002.png,/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/val/curves/curve_003.png
+/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/val/curves/curve_003.png,/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/val/curves/curve_004.png
+/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/val/curves/curve_004.png,/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/val/curves/curve_005.png

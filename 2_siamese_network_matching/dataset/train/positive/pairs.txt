@@ -1,0 +1,10 @@
+/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_000.png,/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_001.png
+/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_001.png,/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_002.png
+/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_002.png,/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_003.png
+/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_003.png,/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_004.png
+/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_004.png,/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_005.png
+/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_005.png,/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_006.png
+/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_006.png,/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_007.png
+/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_007.png,/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_008.png
+/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_008.png,/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_009.png
+/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_009.png,/Users/Zhuanz/Desktop/oracle/2_siamese_network_matching/dataset/train/curves/curve_010.png
