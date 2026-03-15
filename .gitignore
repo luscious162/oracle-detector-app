@@ -9,4 +9,4 @@ node_modules/
 __pycache__/
 *.pyc
 .venv/
-env/
+env/node_modules/
