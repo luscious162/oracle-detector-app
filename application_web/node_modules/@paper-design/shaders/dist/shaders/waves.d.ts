@@ -1,0 +1,53 @@
+import { type ShaderSizingParams, type ShaderSizingUniforms } from '../shader-sizing.js';
+/**
+ * Static line pattern configurable into textures ranging from sharp zigzags to smooth flowing waves.
+ *
+ * Fragment shader uniforms:
+ * - u_colorFront (vec4): Foreground color in RGBA
+ * - u_colorBack (vec4): Background color in RGBA
+ * - u_shape (float): Line shape, 0 = zigzag, 1 = sine, 2-3 = irregular waves, fractional values morph between shapes (0 to 3)
+ * - u_amplitude (float): Wave amplitude (0 to 1)
+ * - u_frequency (float): Wave frequency (0 to 2)
+ * - u_spacing (float): Space between every two wavy lines (0 to 2)
+ * - u_proportion (float): Blend point between front and back colors, 0.5 = equal distribution (0 to 1)
+ * - u_softness (float): Color transition sharpness, 0 = hard edge, 1 = smooth gradient (0 to 1)
+ *
+ * Vertex shader outputs (used in fragment shader):
+ * - v_patternUV (vec2): UV coordinates for pattern with global sizing (rotation, scale, offset, etc) applied
+ *
+ * Vertex shader uniforms:
+ * - u_resolution (vec2): Canvas resolution in pixels
+ * - u_pixelRatio (float): Device pixel ratio
+ * - u_originX (float): Reference point for positioning world width in the canvas (0 to 1)
+ * - u_originY (float): Reference point for positioning world height in the canvas (0 to 1)
+ * - u_worldWidth (float): Virtual width of the graphic before it's scaled to fit the canvas
+ * - u_worldHeight (float): Virtual height of the graphic before it's scaled to fit the canvas
+ * - u_fit (float): How to fit the rendered shader into the canvas dimensions (0 = none, 1 = contain, 2 = cover)
+ * - u_scale (float): Overall zoom level of the graphics (0.01 to 4)
+ * - u_rotation (float): Overall rotation angle of the graphics in degrees (0 to 360)
+ * - u_offsetX (float): Horizontal offset of the graphics center (-1 to 1)
+ * - u_offsetY (float): Vertical offset of the graphics center (-1 to 1)
+ *
+ */
+export declare const wavesFragmentShader: string;
+export interface WavesUniforms extends ShaderSizingUniforms {
+    u_colorFront: [number, number, number, number];
+    u_colorBack: [number, number, number, number];
+    u_shape: number;
+    u_frequency: number;
+    u_amplitude: number;
+    u_spacing: number;
+    u_proportion: number;
+    u_softness: number;
+}
+export interface WavesParams extends ShaderSizingParams {
+    colorFront?: string;
+    colorBack?: string;
+    rotation?: number;
+    shape?: number;
+    frequency?: number;
+    amplitude?: number;
+    spacing?: number;
+    proportion?: number;
+    softness?: number;
+}

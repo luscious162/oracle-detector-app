@@ -1,0 +1,91 @@
+/* 落地页样式 - MeshGradient 负责背景动画 */
+
+.landing-bg {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* 卡片入场动画 */
+.landing-card {
+  animation: cardFadeIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 标题渐入 */
+.landing-title {
+  animation: titleFadeIn 0.6s ease-out 0.2s forwards;
+  opacity: 0;
+}
+
+@keyframes titleFadeIn {
+  to { opacity: 1; }
+}
+
+/* 副标题渐入 */
+.landing-subtitle {
+  animation: subtitleFadeIn 0.6s ease-out 0.4s forwards;
+  opacity: 0;
+}
+
+@keyframes subtitleFadeIn {
+  to { opacity: 1; }
+}
+
+/* 功能格 stagger 动画 */
+.landing-feature-item {
+  opacity: 0;
+  animation: featureItemIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.landing-feature-item:nth-child(1) { animation-delay: 0.5s; }
+.landing-feature-item:nth-child(2) { animation-delay: 0.6s; }
+.landing-feature-item:nth-child(3) { animation-delay: 0.7s; }
+.landing-feature-item:nth-child(4) { animation-delay: 0.8s; }
+
+.landing-feature-item:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 12px 28px rgba(81, 23, 48, 0.18);
+}
+
+@keyframes featureItemIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 开始使用按钮 */
+.landing-cta {
+  animation: ctaFadeIn 0.6s ease-out 1s forwards;
+  opacity: 0;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.landing-cta:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(81, 23, 48, 0.45);
+}
+
+.landing-cta:active {
+  transform: translateY(-1px);
+}
+
+@keyframes ctaFadeIn {
+  to { opacity: 1; }
+}

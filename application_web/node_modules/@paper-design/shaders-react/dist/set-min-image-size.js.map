@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/set-min-image-size.tsx"],
+  "sourcesContent": ["/**\n * Resize the image to at least 1024px on the shorter side.\n * Makes sure that vector images are converted to bitmaps at an acceptable resolution.\n */\nexport function setMinImageSize(img: HTMLImageElement): void {\n  if (img.naturalWidth < 1024 && img.naturalHeight < 1024) {\n    if (img.naturalWidth < 1 || img.naturalHeight < 1) {\n      // Skip weird sizes\n      return;\n    }\n\n    const aspect = img.naturalWidth / img.naturalHeight;\n    img.width = Math.round(aspect > 1 ? 1024 * aspect : 1024);\n    img.height = Math.round(aspect > 1 ? 1024 : 1024 / aspect);\n  }\n}\n"],
+  "mappings": ";;;;;AAIO,SAAS,gBAAgB,KAA6B;AAC3D,MAAI,IAAI,eAAe,QAAQ,IAAI,gBAAgB,MAAM;AACvD,QAAI,IAAI,eAAe,KAAK,IAAI,gBAAgB,GAAG;AAEjD;AAAA,IACF;AAEA,UAAM,SAAS,IAAI,eAAe,IAAI;AACtC,QAAI,QAAQ,KAAK,MAAM,SAAS,IAAI,OAAO,SAAS,IAAI;AACxD,QAAI,SAAS,KAAK,MAAM,SAAS,IAAI,OAAO,OAAO,MAAM;AAAA,EAC3D;AACF;",
+  "names": []
+}

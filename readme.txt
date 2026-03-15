@@ -7,11 +7,38 @@
 ```
 素材与源码/
 ├── 1_swin_transformer_classification/  # 骨片/龟甲分类
-├── 2_siamese_network_matching/        # 文字匹配
-├── 3_gan_genarator/                   # 图像生成
-├── 4_yolo_detector/                  # 文字检测
-├── application.py                     # Web 集成应用（推荐使用）
-└── readme.txt                         # 本文档
+│   ├── dataset/                         # 训练数据集
+│   ├── readme.txt                       # 模块说明文档
+│   └── run_training.py                 # 训练脚本
+├── 2_siamese_network_matching/          # 文字匹配
+│   ├── dataset/                         # 训练数据集
+│   ├── readme.txt                       # 模块说明文档
+│   ├── run_training.py                  # 训练脚本
+│   ├── inference.py                     # 推理脚本
+│   ├── model.py                         # 模型定义
+│   └── generate_samples.py             # 样本生成
+├── 3_gan_genarator/                     # 图像生成
+│   ├── dataset/                         # 训练数据集
+│   ├── readme.txt                       # 模块说明文档
+│   └── run_training.py                  # 训练脚本
+├── 4_yolo_detector/                     # 文字检测
+│   ├── readme.txt                       # 模块说明文档
+│   ├── train_yolo.py                    # 训练脚本
+│   ├── inference_yolo.py                # 推理脚本
+│   └── prepare_dataset.py               # 数据集准备
+├── application_web/                      # Web 集成应用
+│   ├── README.md                         # 应用说明文档
+│   ├── app.py                            # Flask 后端主程序
+│   ├── run.py                            # 启动脚本
+│   ├── index.html                       # 前端入口页面
+│   ├── vite.config.js                   # Vite 配置文件
+│   ├── package.json                     # Node.js 依赖配置
+│   ├── best_swin.pth                    # Swin 分类模型权重
+│   ├── best_siamese.pth                 # 孪生网络模型权重
+│   ├── best_gan.pth                     # GAN 生成模型权重
+│   ├── inscription_detect.pt            # YOLO 检测模型权重
+│   └── src/                             # 前端源代码
+└── readme.txt                           # 本文档
 ```
 
 ## 核心模块功能
@@ -53,9 +80,9 @@
 
 ---
 
-## 集成应用：application.py（推荐使用）
+## 集成应用：application_web（推荐使用）
 
-`application.py` 是一个** Flask Web 集成应用**，将上述四个模块的功能整合为一个统一的可视化 Web 系统。
+`application_web/` 是一个**现代化 Web 集成应用**，将上述四个模块的功能整合为一个统一的可视化 Web 系统。
 
 ### 核心功能
 
@@ -68,42 +95,59 @@
 
 ### 技术实现
 
-- **Web 框架**：Flask + Flask-CORS
-- **前端**：原生 HTML/CSS/JS，响应式设计，支持移动端触摸滑动
-- **模型加载**：自动从 GitHub 下载预训练权重
+- **后端**：Flask + Flask-CORS
+- **前端**：React + Vite，原生 WebGL 渲染，响应式设计
+- **模型加载**：项目已内置预训练权重
 - **可视化**：Grad-CAM 热图、YOLO 检测框、图像轮播展示
 
 ### 启动方式
 
 ```bash
-cd 素材与源码
-pip install flask flask-cors torch torchvision opencv-python pillow numpy requests tqdm pytorch-grad-cam ultralytics
-python application.py
+cd 素材与源码/application_web
+
+# 安装 Node.js 依赖
+npm install
+
+# 启动开发服务器（同时启动前端和后端）
+npm run dev
 ```
 
-启动后自动打开浏览器访问 `http://127.0.0.1:5000`。
+或使用 Python 直接启动后端：
+
+```bash
+cd 素材与源码/application_web
+python app.py
+```
+
+启动后访问 `http://localhost:5173`（开发模式）或 `http://localhost:8000`（生产模式）。
 
 ### 预训练模型
 
-四个模块的预训练模型权重（自动下载）：
+项目已包含以下预训练模型权重（位于 `application_web/` 目录）：
 
-| 模块 | 权重文件 | 下载链接 |
-|-----|---------|---------|
-| 模块一 | `best_swin.pth` | [GitHub](https://github.com/luscious162/oracle_CCCC/releases/download/weight/best_swin.pth) |
-| 模块二 | `best_siamese.pth` | [GitHub](https://github.com/luscious162/oracle_CCCC/releases/download/weight/best_siamese.pth) |
-| 模块三 | `best_gan.pth` | [GitHub](https://github.com/luscious162/oracle_CCCC/releases/download/weight/best_gan.pth) |
-| 模块四 | `inscription_detect.pt` | [GitHub](https://github.com/luscious162/oracle_CCCC/releases/download/weight/inscription_detect.pt) |
+| 模块 | 权重文件 |
+|-----|---------|
+| 模块一 | `best_swin.pth` |
+| 模块二 | `best_siamese.pth` |
+| 模块三 | `best_gan.pth` |
+| 模块四 | `inscription_detect.pt` |
 
 ### 依赖库
 
+**Python 依赖：**
 ```
 torch, torchvision, flask, flask-cors, opencv-python, pillow, numpy, requests, tqdm, pytorch-grad-cam, ultralytics
+```
+
+**Node.js 依赖（前端）：**
+```
+react, react-dom, react-router-dom, @vitejs/plugin-react, vite
 ```
 
 ---
 
 ## 使用建议
 
-1. **入门推荐**：直接运行 `python application.py` 体验完整功能
+1. **入门推荐**：直接运行 `npm run dev` 体验完整功能
 2. **模块独立训练**：如需重新训练各模块模型，进入对应子文件夹操作
 3. **GPU 加速**：建议使用 NVIDIA GPU 加速推理（自动检测 CUDA）

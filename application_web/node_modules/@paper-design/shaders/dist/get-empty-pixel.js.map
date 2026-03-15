@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/get-empty-pixel.ts"],
+  "sourcesContent": ["export function getEmptyPixel(): HTMLImageElement | undefined {\n  if (typeof window === 'undefined') {\n    console.warn('Paper Shaders: can\u2019t create an image on the server');\n    return undefined;\n  }\n\n  const img = new Image();\n  img.src = emptyPixel;\n  return img;\n}\n\nconst emptyPixel = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';\n"],
+  "mappings": ";;;;;AAAO,SAAS,gBAA8C;AAC5D,MAAI,OAAO,WAAW,aAAa;AACjC,YAAQ,KAAK,yDAAoD;AACjE,WAAO;AAAA,EACT;AAEA,QAAM,MAAM,IAAI,MAAM;AACtB,MAAI,MAAM;AACV,SAAO;AACT;AAEA,MAAM,aAAa;",
+  "names": []
+}

@@ -1,0 +1,12 @@
+# 忽略 Mac 系统文件
+.DS_Store
+**/.DS_Store
+
+# 忽略 Node.js 依赖包（前端项目必选）
+node_modules/
+
+# 忽略 Python 缓存和虚拟环境
+__pycache__/
+*.pyc
+.venv/
+env/
