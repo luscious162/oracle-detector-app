@@ -25,17 +25,33 @@ except ImportError:
     sys.exit(1)
 
 # ================= 默认配置与权重自动下载 =================
-SWIN_WEIGHTS_PATH = "best_swin.pth"
-SIAMESE_WEIGHTS_PATH = "best_siamese.pth"
-GAN_WEIGHTS_PATH = "best_gan.pth"
-YOLO_WEIGHTS_PATH = "inscription_detect.pt"
+# 获取项目根目录（application_web的父目录）
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# 下载用的相对路径
+SWIN_WEIGHTS_NAME = "best_swin.pth"
+SIAMESE_WEIGHTS_NAME = "best_siamese.pth"
+GAN_WEIGHTS_NAME = "best_gan.pth"
+YOLO_WEIGHTS_NAME = "inscription_detect.pt"
+
+# 完整路径
+SWIN_WEIGHTS_PATH = os.path.join(PROJECT_ROOT, SWIN_WEIGHTS_NAME)
+SIAMESE_WEIGHTS_PATH = os.path.join(PROJECT_ROOT, SIAMESE_WEIGHTS_NAME)
+GAN_WEIGHTS_PATH = os.path.join(PROJECT_ROOT, GAN_WEIGHTS_NAME)
+YOLO_WEIGHTS_PATH = os.path.join(PROJECT_ROOT, YOLO_WEIGHTS_NAME)
+VIT_WEIGHTS_PATH = os.path.join(PROJECT_ROOT, "模型权重", "best_vit.pth")
+CHAR_IMAGES_DIR = os.path.join(PROJECT_ROOT, "char_images")
+ID_TO_CHINESE_PATH = os.path.join(PROJECT_ROOT, "deciphered/ID_to_chinese.json")
 
 URLS = {
-    SWIN_WEIGHTS_PATH: "https://github.com/luscious162/oracle_CCCC/releases/download/weight/best_swin.pth",
-    SIAMESE_WEIGHTS_PATH: "https://github.com/luscious162/oracle_CCCC/releases/download/weight/best_siamese.pth",
-    GAN_WEIGHTS_PATH: "https://github.com/luscious162/oracle_CCCC/releases/download/weight/best_gan.pth",
-    YOLO_WEIGHTS_PATH: "https://github.com/luscious162/oracle_CCCC/releases/download/weight/inscription_detect.pt"
+    SWIN_WEIGHTS_NAME: "https://github.com/luscious162/oracle_CCCC/releases/download/weight/best_swin.pth",
+    SIAMESE_WEIGHTS_NAME: "https://github.com/luscious162/oracle_CCCC/releases/download/weight/best_siamese.pth",
+    GAN_WEIGHTS_NAME: "https://github.com/luscious162/oracle_CCCC/releases/download/weight/best_gan.pth",
+    YOLO_WEIGHTS_NAME: "https://github.com/luscious162/oracle_CCCC/releases/download/weight/inscription_detect.pt",
 }
+
+# ViT 权重下载链接（若本地不存在则自动下载）
+VIT_WEIGHTS_URL = "https://github.com/luscious162/oracle_CCCC/releases/download/weight/best_vit.pth"
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -59,8 +75,13 @@ def download_weight(url, save_path):
         sys.exit(1)
 
 # 执行下载全部必要权重
-for path, url in URLS.items():
-    download_weight(url, path)
+for name, url in URLS.items():
+    save_path = os.path.join(PROJECT_ROOT, name)
+    download_weight(url, save_path)
+
+# 单独确保 ViT 权重存在（存放在 模型权重/ 目录下）
+os.makedirs(os.path.dirname(VIT_WEIGHTS_PATH), exist_ok=True)
+download_weight(VIT_WEIGHTS_URL, VIT_WEIGHTS_PATH)
 
 
 # ==================== 分类与缀合 模型定义 ====================
@@ -113,6 +134,34 @@ class SwinModel(nn.Module):
         self.model.load_state_dict(state_dict, strict=False)
         self.norm = base_model.norm
     def forward(self, x): return self.model(x)
+
+# ==================== ViT 文字识别模型定义 ====================
+class ViTClassifier(nn.Module):
+    def __init__(self, weights_path, num_classes=1683):
+        super().__init__()
+        weights = models.ViT_B_16_Weights.IMAGENET1K_V1
+        base_model = models.vit_b_16(weights=weights)
+        base_model.heads.head = nn.Linear(base_model.heads.head.in_features, num_classes)
+
+        state_dict = torch.load(weights_path, map_location=DEVICE, weights_only=False)
+        base_model.load_state_dict(state_dict, strict=False)
+
+        self.model = base_model
+        self.transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+    def forward(self, x): return self.model(x)
+
+    def predict(self, pil_img):
+        input_tensor = self.transform(pil_img).unsqueeze(0).to(DEVICE)
+        with torch.no_grad():
+            output = self.model(input_tensor)
+            pred_class = output.argmax(dim=1).item()
+            probs = F.softmax(output, dim=1)[0]
+        return pred_class, probs
 
 # ==================== GAN 摹本生成模型定义 ====================
 
@@ -203,6 +252,18 @@ else:
 gan_model.eval()
 
 yolo_model = YOLO(YOLO_WEIGHTS_PATH)
+
+# 加载ViT文字识别模型
+print("正在加载ViT文字识别模型...")
+vit_model = ViTClassifier(VIT_WEIGHTS_PATH, num_classes=1683).to(DEVICE).eval()
+print("ViT模型加载完毕！")
+
+# 加载ID到汉字的映射
+print("正在加载ID映射表...")
+import json
+with open(ID_TO_CHINESE_PATH, 'r', encoding='utf-8') as f:
+    id_to_chinese = json.load(f)
+print(f"ID映射表加载完毕，共 {len(id_to_chinese)} 个类别")
 
 print("模型加载完毕！")
 
@@ -376,7 +437,8 @@ def index():
             '/predict': 'POST - 分类识别（骨片/龟甲）',
             '/stitch': 'POST - 碎片缀合',
             '/generate_gan': 'POST - GAN 摹本生成',
-            '/detect_yolo': 'POST - YOLOv8 甲骨文检测'
+            '/detect_yolo': 'POST - YOLOv8 甲骨文检测',
+            '/detect_yolo_with_vit': 'POST - YOLOv8检测+GAN摹本+ViT识别'
         }
     })
 
@@ -503,6 +565,140 @@ def detect_yolo():
         return jsonify({
             'result': cv2_to_base64(res_plotted)
         })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)})
+
+# ---------- 路由 5: YOLOv8检测 + GAN摹本 + ViT识别 ----------
+@app.route('/detect_yolo_with_vit', methods=['POST'])
+def detect_yolo_with_vit():
+    """
+    综合接口：
+    1. 使用YOLO检测原拓片上的文字位置（检测框）
+    2. 使用GAN模型生成摹本，替换原拓片
+    3. 在原拓片的检测框位置提取文字区域
+    4. 使用ViT模型对检测框中的字进行识别，获得ID
+    5. 根据ID从char_images文件夹读取对应图片
+    返回：原图+摹本图+检测框+识别结果+char_images图片
+    """
+    try:
+        if 'file' in request.files and request.files['file'].filename != '':
+            img_bytes = request.files['file'].read()
+        elif 'url' in request.form:
+            img_bytes = requests.get(request.form['url']).content
+        else:
+            return jsonify({'error': '未提供图片'})
+
+        # 读取原拓片图片
+        img_bgr = cv2.imdecode(np.frombuffer(img_bytes, np.uint8), cv2.IMREAD_COLOR)
+        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+
+        # 步骤1: 使用YOLO检测文字位置
+        results = yolo_model(img_bgr)
+        boxes = results[0].boxes
+
+        # 绘制检测框（基于原拓片）
+        img_with_boxes = img_bgr.copy()
+        detections = []
+
+        if boxes is not None and len(boxes) > 0:
+            for i, box in enumerate(boxes):
+                x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
+                conf = float(box.conf[0])
+                cls = int(box.cls[0])
+
+                # 绘制检测框
+                cv2.rectangle(img_with_boxes, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                label = f"char_{i+1}: {conf:.2f}"
+                cv2.putText(img_with_boxes, label, (x1, y1-5),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+                detections.append({
+                    'box_id': i + 1,
+                    'bbox': [int(x1), int(y1), int(x2), int(y2)],
+                    'confidence': conf
+                })
+
+        # 步骤2: 使用GAN模型生成摹本
+        # 将原图转换为灰度图用于GAN
+        pil_img = Image.fromarray(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY))
+
+        gan_transform = transforms.Compose([
+            transforms.Resize((512, 512)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.5], [0.5])
+        ])
+
+        input_tensor = gan_transform(pil_img).unsqueeze(0).to(DEVICE)
+
+        with torch.no_grad():
+            output_tensor = gan_model(input_tensor)
+            output_tensor = output_tensor * 0.5 + 0.5
+            output_numpy = output_tensor.squeeze().cpu().numpy()
+            output_numpy = (output_numpy * 255).astype(np.uint8)
+
+        muben_bgr = cv2.cvtColor(output_numpy, cv2.COLOR_GRAY2BGR)
+
+        # 在摹本上绘制相同的检测框
+        muben_with_boxes = muben_bgr.copy()
+        for det in detections:
+            x1, y1, x2, y2 = det['bbox']
+            cv2.rectangle(muben_with_boxes, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            label = f"char_{det['box_id']}"
+            cv2.putText(muben_with_boxes, label, (x1, y1-5),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+        # 步骤3 & 4: 对每个检测框中的文字进行ViT识别
+        char_results = []
+
+        for det in detections:
+            x1, y1, x2, y2 = det['bbox']
+
+            # 从原拓片中提取检测框区域
+            char_roi = img_rgb[y1:y2, x1:x2]
+
+            if char_roi.size == 0:
+                continue
+
+            # 转换为PIL图像进行识别
+            char_pil = Image.fromarray(char_roi)
+
+            # 使用ViT模型进行识别
+            pred_class, probs = vit_model.predict(char_pil)
+
+            # 将类别ID转换为4位字符串格式
+            class_id_str = f"{pred_class + 1:04d}"
+
+            # 获取对应的汉字
+            chinese_char = id_to_chinese.get(class_id_str, "?")
+
+            # 获取该ID对应的char_images图片
+            char_img_path = os.path.join(CHAR_IMAGES_DIR, f"{class_id_str}.jpg")
+
+            char_img_base64 = None
+            if os.path.exists(char_img_path):
+                char_img = cv2.imread(char_img_path)
+                if char_img is not None:
+                    char_img_bgr = cv2.cvtColor(char_img, cv2.COLOR_RGB2BGR)
+                    char_img_base64 = cv2_to_base64(char_img_bgr)
+
+            char_results.append({
+                'box_id': det['box_id'],
+                'class_id': class_id_str,
+                'chinese_char': chinese_char,
+                'confidence': float(probs[pred_class]),
+                'char_image': char_img_base64
+            })
+
+        return jsonify({
+            'original': cv2_to_base64(img_with_boxes),
+            'muben': cv2_to_base64(muben_with_boxes),
+            'detections': detections,
+            'char_results': char_results,
+            'success': True
+        })
+
     except Exception as e:
         import traceback
         traceback.print_exc()

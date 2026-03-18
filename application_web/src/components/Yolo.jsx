@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 export default function Yolo({ baseUrl, db, apiBase }) {
   const [index, setIndex] = useState(0)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [status, setStatus] = useState('')
+  const [hoveredBox, setHoveredBox] = useState(null)
+  const imgRef = useRef(null)
 
   const moveCarousel = (dir) => {
     setIndex((index + dir + db.yolo.length) % db.yolo.length)
@@ -12,21 +14,22 @@ export default function Yolo({ baseUrl, db, apiBase }) {
 
   const runExample = async () => {
     setLoading(true)
-    setStatus('正在通过 YOLOv8 检测甲骨文...')
+    setStatus('正在通过 YOLOv8 检测甲骨文+ViT识别...')
     setResult(null)
-    
+    setHoveredBox(null)
+
     const formData = new FormData()
     formData.append('url', baseUrl + db.yolo[index])
-    
+
     try {
-      const res = await fetch(`${apiBase}/detect_yolo`, {
+      const res = await fetch(`${apiBase}/detect_yolo_with_vit`, {
         method: 'POST',
         body: formData
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       setResult(data)
-      setStatus('处理完成')
+      setStatus(`处理完成 - 检测到 ${data.char_results?.length || 0} 个甲骨文`)
     } catch (e) {
       setStatus('错误: ' + e.message)
     } finally {
@@ -37,28 +40,57 @@ export default function Yolo({ baseUrl, db, apiBase }) {
   const handleFile = async (e) => {
     const file = e.target.files[0]
     if (!file) return
-    
+
     setLoading(true)
     setStatus('正在处理本地图像...')
     setResult(null)
-    
+    setHoveredBox(null)
+
     const formData = new FormData()
     formData.append('file', file)
-    
+
     try {
-      const res = await fetch(`${apiBase}/detect_yolo`, {
+      const res = await fetch(`${apiBase}/detect_yolo_with_vit`, {
         method: 'POST',
         body: formData
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       setResult(data)
-      setStatus('处理完成')
+      setStatus(`处理完成 - 检测到 ${data.char_results?.length || 0} 个甲骨文`)
     } catch (e) {
       setStatus('错误: ' + e.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleMouseMove = (e, imgElement) => {
+    if (!result || !result.detections || !imgElement) return
+
+    const rect = imgElement.getBoundingClientRect()
+    const scaleX = imgElement.naturalWidth / rect.width
+    const scaleY = imgElement.naturalHeight / rect.height
+
+    if (scaleX <= 0 || scaleY <= 0) return
+
+    const mouseX = (e.clientX - rect.left) * scaleX
+    const mouseY = (e.clientY - rect.top) * scaleY
+
+    const charResults = result.char_results || []
+    const detections = result.detections || []
+
+    for (let i = 0; i < detections.length; i++) {
+      const det = detections[i]
+      const [x1, y1, x2, y2] = det.bbox
+
+      if (mouseX >= x1 && mouseX <= x2 && mouseY >= y1 && mouseY <= y2) {
+        const char = charResults[i]
+        setHoveredBox(char && char.char_image ? char : null)
+        return
+      }
+    }
+    setHoveredBox(null)
   }
 
   return (
@@ -73,7 +105,7 @@ export default function Yolo({ baseUrl, db, apiBase }) {
         marginBottom: '28px',
         boxShadow: 'inset 0 0 30px rgba(81, 23, 48, 0.03)'
       }}>
-        <button 
+        <button
           onClick={() => moveCarousel(-1)}
           style={{
             position: 'absolute',
@@ -96,7 +128,7 @@ export default function Yolo({ baseUrl, db, apiBase }) {
         >
           ‹
         </button>
-        
+
         <div style={{
           display: 'flex',
           transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -105,16 +137,16 @@ export default function Yolo({ baseUrl, db, apiBase }) {
           {db.yolo.map((img, i) => (
             <div key={i} style={{ minWidth: '100%', boxSizing: 'border-box', padding: '32px', textAlign: 'center' }}>
               <p style={{ fontWeight: 600, marginBottom: '16px', color: '#511730' }}>素材名: {img}</p>
-              <img 
-                src={baseUrl + img} 
+              <img
+                src={baseUrl + img}
                 alt={img}
                 style={{ maxHeight: '220px', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 2px 8px rgba(81, 23, 48, 0.08)', background: 'white', padding: '12px' }}
               />
             </div>
           ))}
         </div>
-        
-        <button 
+
+        <button
           onClick={() => moveCarousel(1)}
           style={{
             position: 'absolute',
@@ -139,8 +171,8 @@ export default function Yolo({ baseUrl, db, apiBase }) {
         </button>
       </div>
 
-      <button 
-        onClick={runExample} 
+      <button
+        onClick={runExample}
         disabled={loading}
         style={{
           background: 'linear-gradient(135deg, #8E443D 0%, #511730 100%)',
@@ -161,7 +193,7 @@ export default function Yolo({ baseUrl, db, apiBase }) {
         检测上方展示图片中的甲骨文
       </button>
 
-      <div 
+      <div
         onClick={() => document.getElementById('file-yolo').click()}
         style={{
           border: '2px dashed rgba(81, 23, 48, 0.25)',
@@ -179,12 +211,12 @@ export default function Yolo({ baseUrl, db, apiBase }) {
         <input type="file" id="file-yolo" hidden accept="image/*" onChange={handleFile} />
       </div>
 
-      <div style={{ 
-        marginBottom: '20px', 
-        fontWeight: 600, 
-        minHeight: '24px', 
-        display: 'flex', 
-        alignItems: 'center', 
+      <div style={{
+        marginBottom: '20px',
+        fontWeight: 600,
+        minHeight: '24px',
+        display: 'flex',
+        alignItems: 'center',
         justifyContent: 'center',
         gap: '8px'
       }}>
@@ -200,17 +232,77 @@ export default function Yolo({ baseUrl, db, apiBase }) {
       </div>
 
       {result && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '28px' }}>
+        <div style={{ marginTop: '28px' }}>
           <div style={{
-            flex: '0 0 80%',
-            border: '1px solid rgba(81, 23, 48, 0.1)',
-            padding: '24px',
-            textAlign: 'center',
-            borderRadius: '16px',
-            background: 'linear-gradient(145deg, rgba(255,255,255,0.8), rgba(245,230,211,0.5))'
+            display: 'flex',
+            gap: '20px',
+            alignItems: 'stretch',
+            flexWrap: 'wrap'
           }}>
-            <h4 style={{ color: '#511730', fontSize: '16px', marginBottom: '16px', fontWeight: 600 }}>YOLOv8 目标检测结果</h4>
-            <img src={'data:image/png;base64,' + result.result} alt="yolo result" style={{ maxWidth: '100%', maxHeight: '450px', borderRadius: '8px' }} />
+            {/* 左侧：仅显示原拓片视图 */}
+            <div style={{
+              flex: '1 1 55%',
+              minWidth: '280px',
+              border: '1px solid rgba(81, 23, 48, 0.1)',
+              borderRadius: '16px',
+              background: 'linear-gradient(145deg, rgba(255,255,255,0.8), rgba(245,230,211,0.5))',
+              padding: '20px'
+            }}>
+              <h4 style={{ color: '#511730', fontSize: '15px', marginBottom: '12px', fontWeight: 600 }}>
+                原拓片视图 - YOLOv8 检测结果
+              </h4>
+              <div style={{ textAlign: 'center' }}>
+                <img
+                  ref={imgRef}
+                  src={'data:image/png;base64,' + result.original}
+                  alt="原拓片"
+                  style={{ maxWidth: '100%', maxHeight: '420px', borderRadius: '8px' }}
+                  onMouseMove={(e) => handleMouseMove(e, e.target)}
+                  onMouseLeave={() => setHoveredBox(null)}
+                />
+              </div>
+            </div>
+
+            {/* 右侧：悬停时显示对应 char_images 图片 */}
+            <div style={{
+              flex: '0 0 200px',
+              minWidth: '200px',
+              border: '1px solid rgba(81, 23, 48, 0.1)',
+              borderRadius: '16px',
+              background: 'linear-gradient(145deg, rgba(255,255,255,0.9), rgba(245,230,211,0.5))',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '280px'
+            }}>
+              <h4 style={{ color: '#511730', fontSize: '15px', marginBottom: '16px', fontWeight: 600 }}>
+                对应字图
+              </h4>
+              {hoveredBox?.char_image ? (
+                <img
+                  src={'data:image/png;base64,' + hoveredBox.char_image}
+                  alt=""
+                  style={{
+                    maxWidth: '160px',
+                    maxHeight: '220px',
+                    objectFit: 'contain',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 12px rgba(81, 23, 48, 0.15)'
+                  }}
+                />
+              ) : (
+                <div style={{
+                  color: 'rgba(81, 23, 48, 0.4)',
+                  fontSize: '14px',
+                  textAlign: 'center',
+                  padding: '24px'
+                }}>
+                  将光标移至左侧检测框上查看对应字图
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
