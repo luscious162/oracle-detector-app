@@ -9,7 +9,7 @@ export default function Landing() {
     { icon: '📊', label: '分类识别' },
     { icon: '🔗', label: '碎片缀合' },
     { icon: '🖋️', label: '摹本生成' },
-    { icon: '🔎', label: '甲骨文检测' }
+    { icon: '🔎', label: '甲骨文检测与释义' }
   ]
 
   return (
@@ -73,7 +73,7 @@ export default function Landing() {
               marginBottom: '16px'
             }}
           >
-            甲骨文智能分析全能系统
+            甲骨识微
           </h1>
 
           <p

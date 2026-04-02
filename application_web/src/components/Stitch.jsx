@@ -317,7 +317,7 @@ export default function Stitch({ baseUrl, db, apiBase }) {
           background: 'linear-gradient(145deg, rgba(255,255,255,0.8), rgba(245,230,211,0.5))'
         }}>
           <h4 style={{ color: '#511730', fontSize: '16px', marginBottom: '16px', fontWeight: 600 }}>最终缀合结果</h4>
-          <img src={'data:image/png;base64,' + result.result} alt="stitched" style={{ maxWidth: '100%', maxHeight: '450px', borderRadius: '8px' }} />
+          <img src={'data:image/jpeg;base64,' + result.result} alt="stitched" style={{ maxWidth: '100%', maxHeight: '450px', borderRadius: '8px' }} />
           <p style={{
             background: 'linear-gradient(135deg, #E0D68A 0%, #CB9173 100%)',
             WebkitBackgroundClip: 'text',

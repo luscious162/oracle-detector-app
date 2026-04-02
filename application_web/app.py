@@ -41,7 +41,7 @@ GAN_WEIGHTS_PATH = os.path.join(PROJECT_ROOT, GAN_WEIGHTS_NAME)
 YOLO_WEIGHTS_PATH = os.path.join(PROJECT_ROOT, YOLO_WEIGHTS_NAME)
 VIT_WEIGHTS_PATH = os.path.join(PROJECT_ROOT, "模型权重", "best_vit.pth")
 CHAR_IMAGES_DIR = os.path.join(PROJECT_ROOT, "char_images")
-ID_TO_CHINESE_PATH = os.path.join(PROJECT_ROOT, "deciphered/ID_to_chinese.json")
+ID_TO_CHINESE_PATH = os.path.join(PROJECT_ROOT, "ID_to_chinese.json")
 
 URLS = {
     SWIN_WEIGHTS_NAME: "https://github.com/luscious162/oracle_CCCC/releases/download/weight/best_swin.pth",
@@ -276,7 +276,10 @@ def reshape_transform(tensor):
     return tensor.transpose(1, 2).reshape(B, C, H, W)
 
 def cv2_to_base64(cv_img):
-    _, buffer = cv2.imencode('.png', cv_img)
+    img = cv_img
+    if img.shape[2] == 4:          # BGRA → BGR，JPG 不支持透明通道
+        img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+    _, buffer = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
     return base64.b64encode(buffer).decode('utf-8')
 
 def segment_to_image(segment, target_size=105):

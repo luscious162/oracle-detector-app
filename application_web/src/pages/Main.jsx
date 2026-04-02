@@ -4,6 +4,7 @@ import Classify from '../components/Classify'
 import Stitch from '../components/Stitch'
 import Gan from '../components/Gan'
 import Yolo from '../components/Yolo'
+import FullProcess from '../components/FullProcess'
 import './Landing.css'
 
 const API_BASE = '/api'
@@ -24,7 +25,8 @@ export default function Main() {
     { id: 'classify', label: '分类识别' },
     { id: 'stitch', label: '碎片缀合' },
     { id: 'gan', label: '摹本生成' },
-    { id: 'yolo', label: '甲骨文检测' }
+    { id: 'yolo', label: '甲骨文检测与释义' },
+    { id: 'full', label: '全流程研析' }
   ]
 
   return (
@@ -90,7 +92,7 @@ export default function Main() {
             letterSpacing: '4px',
             marginBottom: '8px'
           }}>
-            甲骨文智能分析全能系统
+            甲骨识微
           </h2>
           <p style={{
             color: '#5A5A5A',
@@ -152,6 +154,9 @@ export default function Main() {
         </div>
         <div style={{ display: activeTab === 'yolo' ? 'block' : 'none', animation: 'fadeIn 0.5s' }}>
           <Yolo baseUrl={baseUrl} db={db} apiBase={API_BASE} />
+        </div>
+        <div style={{ display: activeTab === 'full' ? 'block' : 'none', animation: 'fadeIn 0.5s' }}>
+          <FullProcess baseUrl={baseUrl} db={db} apiBase={API_BASE} isActive={activeTab === 'full'} />
         </div>
       </div>
     </div>
